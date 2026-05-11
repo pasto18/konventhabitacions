@@ -7,24 +7,24 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f7f6f2;--surface:#fff;--surface2:#f0efe9;--border:#e0dfd8;--border2:#ccc;
+  --bg:#dfdfdf;--surface:#fff;--surface2:#f0efe9;--border:#e0dfd8;--border2:#ccc;
   --text:#1a1a18;--text2:#666;--text3:#999;
   --blue:#185FA5;--blue-bg:#e6f1fb;--blue-border:#b5d4f4;
   --green:#3b6d11;--green-bg:#eaf3de;--green-border:#c0dd97;
   --red:#a32d2d;--red-bg:#fcebeb;
   --radius:8px;--radius-lg:12px;
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:18px;min-height:100vh}
 .app{max-width:1000px;margin:0 auto;padding:0 0 60px}
 header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:30;flex-wrap:wrap}
-.logo{font-size:17px;font-weight:700;margin-right:6px;white-space:nowrap}
+.logo{font-size:23px;font-weight:700;margin-right:6px;white-space:nowrap}
 .tabs{display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.tab{padding:11px 16px;cursor:pointer;font-size:13px;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap;color:var(--text2);transition:color .15s}
+.tab{padding:11px 16px;cursor:pointer;font-size: clamp(14px, 4vw, 24px);border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap;color:var(--text2);transition:color .15s}
 .tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:600}
 .tab:hover:not(.active){color:var(--text)}
 
 .panel{padding:16px}
-.section-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin:16px 0 8px;display:block;letter-spacing:.06em}
+.section-label{font-size:14px;font-weight:700;color:var(--text3);text-transform:uppercase;margin:16px 0 8px;display:block;letter-spacing:.06em}
 
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;position:relative}
@@ -45,6 +45,8 @@ header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-botto
 
 .badge{font-size:10px;padding:3px 7px;border-radius:4px;font-weight:700}
 
+
+
 /* Calendar desktop */
 .cal-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
 .cal-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:12px;table-layout:fixed}
@@ -54,6 +56,17 @@ header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-botto
 .floor-sep td,.floor-sep th{border-bottom:2.5px solid var(--text)!important}
 .p-bar{width:100%;height:100%;border-radius:3px;font-size:10px;display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
 .p-bar:hover{filter:brightness(.92)}
+
+.unassigned-row {
+  background-color: rgba(255, 193, 7, 0.05); /* Un tono amarillento muy suave */
+  border-bottom: 2px solid #ffc107 !important;
+}
+.unassigned-label {
+  color: #ffc107;
+  font-weight: bold;
+  font-size: 0.8em;
+  text-transform: uppercase;
+}
 
 /* Calendar mobile */
 .cal-mobile{display:none}
@@ -66,6 +79,21 @@ header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-botto
 @media(max-width:640px){
   .cal-desktop{display:block}
   .cal-mobile{display:none}
+
+/*calendari mobil*/
+  .room-col {
+    width: 75px;      /* Se achica solo en móvil */
+    min-width: 75px;
+    padding: 0 4px;
+    font-size: 10px;  /* Letra más pequeña solo en móvil */
+    word-wrap: break-word;
+  }
+
+  .cal-table th, .cal-table td {
+    width: 32px !important;    /* Celdas más estrechas solo en móvil */
+    min-width: 32px !important;
+    font-size: 10px;
+  }
 }
 
 /* Modal */
@@ -91,10 +119,10 @@ summary::-webkit-details-marker{display:none}
   <header>
     <div class="logo">Konvent Habitacions</div>
     <div class="tabs">
-      <button class="tab active" onclick="setTab(0)">Habitacions</button>
-      <button class="tab" onclick="setTab(1)">Grups</button>
-      <button class="tab" onclick="setTab(2)">Persones</button>
-      <button class="tab" onclick="setTab(3)">Calendari</button>
+        <button class="tab" onclick="setTab(0)">Persones</button>
+      <button class="tab" onclick="setTab(1)">Habitacions</button>
+      <button class="tab" onclick="setTab(2)">Grups</button>
+      <button class="tab active" onclick="setTab(3)">Calendari</button>
     </div>
   </header>
   <div id="root" class="panel"></div>
@@ -148,6 +176,8 @@ const e    = s => s?.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 const pad  = n => n < 10 ? '0'+n : n;
 const ds   = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const diff = (a,b) => Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
+// Convierte "2026-05-12" en "12-05"
+const fmtDM = s => s ? s.split('-').reverse().slice(0, 2).join('-') : '';
 
 function groupStyle(groupId) {
   const g = groups.find(x => x.id === groupId);
@@ -166,13 +196,39 @@ window.closeModal = () => { assignCtx=null; render(); };
 window.pickColor  = hex => { pendingGroupColor=hex; render(); };
 
 window.addRoom = async () => {
-  const name=document.getElementById('rName').value.trim();
+  const name = document.getElementById('rName').value.trim();
   if (!name) return;
-  await addDoc(collection(db,'rooms'),{
-    name, capacity:parseInt(document.getElementById('rCap').value)||2,
-    floor:document.getElementById('rFloor').value.trim()||'1'
+
+  // 1. Capturamos el tipo y las fechas (igual que en update)
+  const type = document.getElementById('rType').value; // Asegúrate que el select de creación tenga este ID
+  const availabilities = [];
+
+  if (type === 'casa') {
+    // Importante: Si usas la misma clase .avail-row para crear y editar, 
+    // asegúrate de que addRoom solo lea los del formulario de creación.
+    // Una forma fácil es buscar solo dentro del contenedor de creación:
+    document.querySelectorAll('#newCasaDatesSection .avail-row').forEach(row => {
+      const start = row.querySelector('.avail-start').value;
+      const end = row.querySelector('.avail-end').value;
+      if (start && end) availabilities.push({ start, end });
+    });
+  }
+
+  // 2. Guardamos en Firebase con los nuevos campos
+  await addDoc(collection(db, 'rooms'), {
+    name,
+    capacity: parseInt(document.getElementById('rCap').value) || 2,
+    floor: document.getElementById('rFloor').value.trim() || '1',
+    type: type,
+    availabilities: availabilities
   });
-  document.getElementById('rName').value='';
+
+  // 3. Limpiamos el formulario
+  document.getElementById('rName').value = '';
+  document.getElementById('rCap').value = '2';
+  document.getElementById('rFloor').value = '1';
+  if(document.getElementById('availListNew')) document.getElementById('availListNew').innerHTML = '';
+  render();
 };
 
 window.addGroup = async () => {
@@ -218,12 +274,32 @@ window.savePersonEdit = async id => {
 };
 
 window.updateRoom = async id => {
-  await updateDoc(doc(db,'rooms',id),{
-    name:document.getElementById('erName').value.trim(),
-    capacity:parseInt(document.getElementById('erCap').value)||2,
-    floor:document.getElementById('erFloor').value.trim()||'1'
+  // 1. Recogemos el tipo (Resident o Casa)
+  const type = document.getElementById('erType').value;
+  const availabilities = [];
+
+  // 2. Si es Casa, recogemos los rangos de fechas del DOM
+  if (type === 'casa') {
+    document.querySelectorAll('.avail-row').forEach(row => {
+      const start = row.querySelector('.avail-start').value;
+      const end = row.querySelector('.avail-end').value;
+      if (start && end) {
+        availabilities.push({ start, end });
+      }
+    });
+  }
+
+  // 3. Actualizamos Firebase con los nuevos campos
+  await updateDoc(doc(db, 'rooms', id), {
+    name: document.getElementById('erName').value.trim(),
+    capacity: parseInt(document.getElementById('erCap').value) || 2,
+    floor: document.getElementById('erFloor').value.trim() || '1',
+    type: type,               // <--- Nuevo campo
+    availabilities: availabilities // <--- Nuevo campo
   });
-  editRoomId=null; render();
+
+  editRoomId = null; 
+  render();
 };
 
 window.delItem = async (coll,id) => {
@@ -273,7 +349,7 @@ function renderPersonCard(p) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
       <div style="min-width:0">
         <b style="font-size:14px">${e(p.name)}</b><br>
-        <small style="color:var(--text2)">${p.from} → ${p.to}</small><br>
+        <small style="color:var(--text2)">${fmtDM(p.from)} → ${fmtDM(p.to)}</small><br>
         <div style="margin-top:5px">${groupBadge}</div>
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0">
@@ -297,12 +373,25 @@ function render() {
   // CAMBIO 2: Obtener fecha actual para filtrar estancias pasadas
   const today = ds(new Date());
 
-  // ── 0: HABITACIONS ──────────────────────────────────────────────────────────
-  if (tab===0) {
+  // ── 1: HABITACIONS ──────────────────────────────────────────────────────────
+  if (tab===1) {
     h += `<div class="form-box"><div class="form-row">
       <div class="field"><label>Planta</label><input id="rFloor" placeholder="1" style="max-width:70px"></div>
       <div class="field"><label>Nom o número</label><input id="rName" placeholder="101, Suite, Golfes…"></div>
       <div class="field"><label>Capacitat</label><input id="rCap" type="number" value="2" min="1" style="max-width:80px"></div>
+     <div class="field">
+  <label>Tipus</label>
+  <select id="rType" onchange="toggleNewCasaFields()">
+    <option value="resident">Resident</option>
+    <option value="casa">Casa</option>
+  </select>
+</div>
+
+<div id="newCasaDatesSection" style="display:none;">
+  <div id="availListNew"></div>
+  <button onclick="addAvailRange('availListNew')">+ Afegir dates</button>
+</div>
+
       <button class="btn primary" onclick="addRoom()" style="margin-top:auto">+ Afegir</button>
     </div></div>
     <div class="grid">`;
@@ -314,17 +403,45 @@ function render() {
             <div class="field"><label>Planta</label><input id="erFloor" value="${e(r.floor||'')}"></div>
             <div class="field"><label>Nom o número</label><input id="erName" value="${e(r.name)}"></div>
             <div class="field"><label>Capacitat</label><input id="erCap" type="number" value="${r.capacity}"></div>
+            <div class="field">
+              <label>Tipus</label>
+              <select id="erType" onchange="toggleCasaFields()" style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--border); background:var(--surface1); color:var(--text1)">
+                <option value="resident" ${r.type === 'resident' ? 'selected' : ''}>Resident</option>
+                <option value="casa" ${r.type === 'casa' ? 'selected' : ''}>Casa</option>
+              </select>
+            </div>
           </div>
-          <div style="margin-top:10px;display:flex;gap:8px">
+          
+          <div id="casaDatesSection" style="display:${r.type === 'casa' ? 'block' : 'none'}; margin-top:15px; padding:15px; background:var(--surface2); border-radius:8px; border:1px dashed var(--border)">
+            <label style="display:block; font-size:12px; margin-bottom:10px; font-weight:bold">Disponibilitat de la Casa (Rangs de dates)</label>
+            <div id="availList">
+              ${(r.availabilities || []).map((range, idx) => `
+                <div class="avail-row" style="display:flex; gap:5px; margin-bottom:8px; align-items:center;">
+                  <input type="date" class="avail-start" value="${range.start}" style="padding:4px; border-radius:4px; border:1px solid var(--border)">
+                  <span>fins a</span>
+                  <input type="date" class="avail-end" value="${range.end}" style="padding:4px; border-radius:4px; border:1px solid var(--border)">
+                  <button class="btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px">✕</button>
+                </div>
+              `).join('')}
+            </div>
+            <button class="btn" style="margin-top:5px" onclick="addAvailRange()">+ Afegir rang de dates</button>
+          </div>
+
+          <div style="margin-top:15px;display:flex;gap:8px">
             <button class="btn primary" onclick="updateRoom('${r.id}')">Guardar</button>
             <button class="btn" onclick="setEditRoom(null)">Cancel·lar</button>
           </div>
-        </div>`;
+        </div>`;    
       } else {
         h += `<div class="card">
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div><b>${e(r.name)}</b> <span class="badge" style="background:var(--surface2)">P${e(r.floor||'?')}</span><br>
-            <small style="color:var(--text2)">Capacitat: ${r.capacity} persones</small></div>
+            <div>
+              <b style="color:${r.type === 'casa' ? '#e67e22' : 'inherit'}">${e(r.name)}</b> 
+              <span class="badge">${r.type === 'casa' ? '🏠 Casa' : '👤 Res.'}</span>
+              <span class="badge" style="background:var(--surface2)">P${e(r.floor||'?')}</span><br>
+              <small style="color:var(--text2)">Capacitat: ${r.capacity} persones</small>
+              ${r.type === 'casa' ? `<br><small style="color:var(--text3)">${(r.availabilities || []).length} rangs de dates</small>` : ''}
+            </div>
             <div style="display:flex;gap:4px">
               <button class="btn" onclick="setEditRoom('${r.id}')">✎</button>
               <button class="btn danger" onclick="delItem('rooms','${r.id}')">✕</button>
@@ -336,8 +453,8 @@ function render() {
     h += `</div>`;
   }
 
-  // ── 1: GRUPS ────────────────────────────────────────────────────────────────
-  if (tab===1) {
+  // ── 2: GRUPS ────────────────────────────────────────────────────────────────
+  if (tab===2) {
     const newColor = pendingGroupColor || PALETTE[groups.length % PALETTE.length];
     h += `<div class="form-box">
       <span class="section-label" style="margin-top:0">Nou grup</span>
@@ -372,29 +489,28 @@ function render() {
           </div>
         </div>`;
       } else {
-        h += `<details class="card" style="border-left:4px solid ${cs.bg}">
-          <summary style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+        h += `<div class="card" style="border-left:4px solid ${cs.bg}">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${cs.bg};flex-shrink:0"></span>
               <b>${e(g.name)}</b>
               <small style="color:var(--text2)">${members.length} persones</small>
             </div>
             <div style="display:flex;gap:4px">
-              <button class="btn" style="padding:4px 8px" onclick="event.preventDefault();setEditGroup('${g.id}')">✎</button>
-              <button class="btn danger" style="padding:4px 8px" onclick="event.preventDefault();delItem('groups','${g.id}')">✕</button>
-            </div>
-          </summary>
+                <button class="btn" style="padding:4px 8px" onclick="setEditGroup('${g.id}')">✎</button>
+                 <button class="btn danger" style="padding:4px 8px" onclick="delItem('groups','${g.id}')">✕</button>            </div>
+          </div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;color:var(--text2);line-height:1.7">
             ${members.length ? members.map(m=>`• ${e(m.name)}`).join('<br>') : '<i>Cap persona en aquest grup.</i>'}
           </div>
-        </details>`;
+        </div>`;
       }
     });
     h += `</div>`;
   }
 
-  // ── 2: PERSONES ─────────────────────────────────────────────────────────────
-  if (tab===2) {
+  // ── 0: PERSONES ─────────────────────────────────────────────────────────────
+  if (tab===0) {
     const groupOpts = groups.map(g=>`<option value="${g.id}">${e(g.name)}</option>`).join('');
     h += `<div class="form-box">
       <span class="section-label" style="margin-top:0">Inscriure persona</span>
@@ -421,7 +537,7 @@ function render() {
     const days = Array.from({length:daysInMonth},(_,i)=>ds(new Date(y,m,i+1)));
     const calStart = days[0];
     const calEnd   = ds(new Date(y,m+1,1));
-    const colW = 40;
+    const colW = window.innerWidth < 640 ? 32 : 40;
 
     h += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <button class="btn" onclick="changeCalOffset(-1)">← Anterior</button>
@@ -436,16 +552,86 @@ function render() {
     h += `<div class="cal-desktop"><div class="cal-wrap"><table class="cal-table"><thead><tr>
       <th class="room-col">Habitació</th>`;
     days.forEach(d => {
-      const isToday = d===today;
-      h += `<th style="width:${colW}px;min-width:${colW}px;${isToday?'background:var(--blue-bg);color:var(--blue)':''}">${d.slice(-2)}</th>`;
-    });
+  const isToday = d===today;
+  const nomDia = new Date(d).toLocaleDateString('ca', { weekday: 'short' });
+  h += `<th style="..." >${d.slice(-2)}<br><small>${nomDia}</small></th>`;
+});
     h += `</tr></thead><tbody>`;
+   // --- NUEVO FILTRO DE VISIBILIDAD ---
+    const monthStart = days[0]; 
+    const monthEnd = days[days.length - 1]; 
 
-    sortedRooms.forEach((r, ri) => {
-      const nextRoom = sortedRooms[ri+1];
+    const visibleRooms = sortedRooms.filter(r => {
+      if (!r.type || r.type === 'resident') return true;
+      if (r.type === 'casa') {
+        // Solo mostramos la fila si tiene disponibilidad en este rango de fechas
+        return (r.availabilities || []).some(range => range.start <= monthEnd && range.end >= monthStart);
+      }
+      return false;
+    });
+
+// --- FILA DE PERSONAS SIN HABITACIÓN (OPTIMIZADA) ---
+const unassignedPeople = people.filter(p => !p.roomId && p.from < calEnd && p.to > calStart);
+
+// Lógica de carriles (tracks) para que no se solapen
+const uTracks = [], uAssignments = [];
+unassignedPeople.sort((a,b) => a.from.localeCompare(b.from)).forEach(p => {
+  let ti = uTracks.findIndex(e => e <= p.from);
+  if (ti === -1) { ti = uTracks.length; uTracks.push(p.to); } 
+  else { uTracks[ti] = p.to; }
+  uAssignments.push({ p, ti });
+});
+
+const uTotalTracks = Math.max(1, uTracks.length);
+const uRowH = Math.max(50, uTotalTracks * 22); // Altura dinámica según ocupación
+
+h += `<tr class="unassigned-row">
+  <td class="room-col" style="border-bottom:2px solid #ffc107; height:${uRowH}px">
+    <span class="unassigned-label">⚠️ Pendents</span><br>
+    <small style="color:var(--text3)">${unassignedPeople.length} pers.</small>
+  </td>
+  <td colspan="${daysInMonth}" style="padding:0; position:relative; height:${uRowH}px; min-width:${daysInMonth * colW}px; border-bottom:2px solid #ffc107">
+    
+    <div style="display:flex; position:absolute; left:0; top:0; bottom:0; width:${daysInMonth * colW}px; z-index:1">
+      ${days.map(d => `
+        <div style="width:${colW}px;" 
+             ondragover="event.preventDefault(); this.style.background='rgba(255,193,7,0.1)'" 
+             ondragleave="this.style.background=''"
+             ondrop="handleDrop(event, 'unassigned', '${d}')">
+        </div>`).join('')}
+    </div>
+
+    <div style="position:absolute; left:0; top:0; bottom:0; width:${daysInMonth * colW}px; z-index:2; pointer-events:none">`;
+
+uAssignments.forEach(({p, ti}) => {
+  const s = p.from < calStart ? calStart : p.from;
+  const en = p.to > calEnd ? calEnd : p.to;
+  const left = diff(calStart, s) * colW;
+  const wid = Math.max(diff(s, en), 0.5) * colW;
+  
+  // Calculamos posición vertical más compacta (20px por carril)
+  const topPos = ti * 20 + 4; 
+
+  h += `<div style="position:absolute; left:${left}px; width:${wid}px; top:${topPos}px; height:18px; padding:1px; pointer-events:auto">
+    <div class="p-bar" 
+         draggable="true" 
+         ondragstart="event.dataTransfer.setData('text/plain', '${p.id}')"
+         onclick="openAssignPerson('${p.id}')" 
+         style="background:#ffc107; color:#000; cursor:grab; border:1px solid #d39e00; font-size:10px; line-height:16px; padding:0 4px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis" 
+         title="${e(p.name)}">
+      ${e(p.name)}
+    </div>
+  </div>`;
+});
+
+h += `</div></td></tr>`;
+
+
+    // Cambiamos sortedRooms por visibleRooms
+    visibleRooms.forEach((r, ri) => {
+      const nextRoom = visibleRooms[ri+1];
       const isLastOfFloor = !nextRoom || (nextRoom.floor||'?') !== (r.floor||'?');
 
-      // CAMBIO 2: Aplicado filtro de fecha actual en el calendario
       const pList = people.filter(p=>p.roomId===r.id&&p.from<calEnd&&p.to>calStart && p.to >= today)
                           .sort((a,b)=>a.from.localeCompare(b.from));
       const tracks=[], assignments=[];
@@ -454,15 +640,39 @@ function render() {
         if(ti===-1){ti=tracks.length;tracks.push(p.to);}else{tracks[ti]=p.to;}
         assignments.push({p,ti});
       });
+
       const totalTracks = Math.max(r.capacity||1, tracks.length);
       const rowH = Math.max(44, totalTracks*28);
       const sepStyle = isLastOfFloor ? 'border-bottom:3px solid #1a1a18!important' : '';
 
       h += `<tr>
-        <td class="room-col" style="${sepStyle}"><b>${e(r.name)}</b><br><small style="color:var(--text3)">P${e(r.floor||'?')} · ${r.capacity}🛏</small></td>
+        <td class="room-col" style="${sepStyle}">
+          <b>${e(r.name)}</b><br>
+          <span style="font-size: 1.4em; line-height: 1; display: block; margin-top: 2px;">${'🛏️ '.repeat(r.capacity)}</span>
+        </td> 
         <td colspan="${daysInMonth}" style="padding:0;position:relative;height:${rowH}px;min-width:${daysInMonth*colW}px;${sepStyle}">
           <div style="display:flex;position:absolute;left:0;top:0;bottom:0;width:${daysInMonth*colW}px;z-index:1">
-            ${days.map(d=>`<div style="width:${colW}px;border-right:1px dashed var(--border);${d===today?'background:rgba(24,95,165,.07)':''}cursor:pointer" onclick="openAssignRoom('${r.id}','${d}')"></div>`).join('')}
+            ${days.map(d => {
+              // LÓGICA DE BLOQUEO VISUAL
+              let isBlocked = false;
+              if (r.type === 'casa') {
+                isBlocked = !(r.availabilities || []).some(range => d >= range.start && d <= range.end);
+              }
+
+              const bg = isBlocked ? 'background:rgba(30,30,30,0.85)' : (d === today ? 'background:rgba(24,95,165,.07)' : '');
+              const cursor = isBlocked ? 'cursor:not-allowed' : 'cursor:pointer';
+              const clickAction = isBlocked ? '' : `openAssignRoom('${r.id}','${d}')`;
+
+              return `<div 
+        style="width:${colW}px;border-right:1px dashed var(--border);${bg};${cursor}" 
+        onclick="${clickAction}"
+        ${!isBlocked ? `
+            ondragover="event.preventDefault(); this.style.background='rgba(255,255,255,0.1)'" 
+            ondragleave="this.style.background='${bg}'"
+            ondrop="handleDrop(event, '${r.id}', '${d}')"
+        ` : ''}
+    ></div>`;
+            }).join('')}
           </div>
           <div style="position:absolute;left:0;top:0;bottom:0;width:${daysInMonth*colW}px;z-index:2;pointer-events:none">`;
 
@@ -476,8 +686,12 @@ function render() {
         const g    = groups.find(x=>x.id===p.groupId);
         const cs   = contrastStyle(g?.color||'#3B82F6');
         h += `<div style="position:absolute;left:${left}px;width:${wid}px;top:${topP}%;height:${hP}%;padding:2px;pointer-events:auto">
-          <div class="p-bar" style="background:${cs.bg};color:${cs.text}" onclick="openAssignPerson('${p.id}')" title="${e(p.name)} (${p.from} → ${p.to})">
-            ${e(p.name)}
+          <div class="p-bar" draggable="true" 
+         ondragstart="event.dataTransfer.setData('text/plain', '${p.id}')"
+         onclick="openAssignPerson('${p.id}')" 
+         style="background:${cs.bg};color:${cs.text};cursor:grab" 
+         title="${e(p.name)}">
+        ${e(p.name)}
           </div>
         </div>`;
       });
@@ -530,19 +744,33 @@ function render() {
     if (assignCtx.pId) {
       const p = people.find(x=>x.id===assignCtx.pId);
       m += `<h3>Assignar habitació</h3><p class="modal-sub">${e(p.name)} · ${p.from} → ${p.to}</p>`;
-      rooms.sort((a,b)=>(a.floor||'').localeCompare(b.floor||'')||a.name.localeCompare(b.name)).forEach(r=>{
+rooms.sort((a,b)=>(a.floor||'').localeCompare(b.floor||'')||a.name.localeCompare(b.name)).forEach(r=>{
+        // 1. FILTRO DE DISPONIBILIDAD PARA "CASA"
+        if (r.type === 'casa') {
+          const guestFrom = p.from;
+          const guestTo = p.to;
+          
+          // Comprobamos si la estancia del huésped cabe en algún rango de la casa
+          const isAvailable = (r.availabilities || []).some(range => {
+            return guestFrom >= range.start && guestTo <= range.end;
+          });
+
+          // Si la casa no está disponible para estas fechas, saltamos esta habitación (no la mostramos)
+          if (!isAvailable) return;
+        }
+
+        // 2. LÓGICA DE OCUPACIÓN (lo que ya tenías)
         const occs = people.filter(x=>x.roomId===r.id&&x.id!==p.id&&x.from<p.to&&x.to>p.from);
         const full = occs.length >= r.capacity;
         const isCurrent = p.roomId===r.id;
+
+        // 3. DIBUJAR LA OPCIÓN
         m += `<div class="assign-opt" style="${isCurrent?'background:var(--blue-bg);border-color:var(--blue-border)':''}" onclick="assignLlit('${p.id}','${r.id}')">
-          <span><b>${e(r.name)}</b> <small style="color:var(--text3)">P${r.floor||'?'}</small><br><small style="color:var(--text2)">Ocupació: ${occs.length}/${r.capacity}</small></span>
-          ${isCurrent?`<span class="badge" style="background:var(--blue-bg);color:var(--blue)">Actual</span>`
+        <span><b>${e(r.name)}</b><br><small style="color:var(--text2)">Ocupació: ${occs.length}/${r.capacity}</small></span>          ${isCurrent?`<span class="badge" style="background:var(--blue-bg);color:var(--blue)">Actual</span>`
            :full?`<span class="badge" style="background:var(--red-bg);color:var(--red)">Plena</span>`
            :`<span class="badge" style="background:var(--green-bg);color:var(--green)">Disponible</span>`}
         </div>`;
       });
-      m += `<button class="btn danger" style="width:100%;margin-top:8px" onclick="assignLlit('${p.id}',null)">Treure de l'habitació</button>`;
-
     } else if (assignCtx.rId) {
       const r = rooms.find(x=>x.id===assignCtx.rId);
       m += `<h3>${e(r.name)}</h3><p class="modal-sub">Dia ${assignCtx.d} · Planta ${r.floor||'?'}</p>`;
@@ -562,6 +790,73 @@ function render() {
     root.innerHTML += m;
   }
 }
+
+function toggleCasaFields() {
+  const type = document.getElementById('erType').value;
+  document.getElementById('casaDatesSection').style.display = (type === 'casa') ? 'block' : 'none';
+}
+
+window.addAvailRange = (containerId = 'availList') => {
+  const container = document.getElementById(containerId);
+  if (!container) return; // Seguridad por si el ID no existe
+  
+  const div = document.createElement('div');
+  div.className = 'avail-row';
+  div.style = "display:flex; gap:5px; margin-bottom:8px; align-items:center;";
+  div.innerHTML = `
+    <input type="date" class="avail-start" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--surface1); color:var(--text1)">
+    <span style="font-size:12px">fins a</span>
+    <input type="date" class="avail-end" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--surface1); color:var(--text1)">
+    <button class="btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px">✕</button>
+  `;
+  container.appendChild(div);
+};
+
+window.handleDrop = async (e, roomId, date) => {
+    e.preventDefault();
+    e.target.style.background = '';
+    
+    const personId = e.dataTransfer.getData('text/plain');
+    const p = people.find(x => x.id === personId);
+    if (!p) return;
+
+    // --- CASO DESASIGNAR ---
+    // Si soltamos en la fila de pendientes
+    if (roomId === 'unassigned') {
+        try {
+            await updateDoc(doc(db, 'people', personId), { roomId: null });
+            if (typeof render === 'function') render();
+            return;
+        } catch (err) { console.error("Error al desasignar:", err); return; }
+    }
+
+    // --- CASO ASIGNAR A HABITACIÓN ---
+    const r = rooms.find(x => x.id === roomId);
+    if (!r) return; // Si no hay habitación válida, paramos
+
+    // 1. Validar disponibilidad Casa
+    if (r.type === 'casa') {
+        const isAvailable = (r.availabilities || []).some(range => p.from >= range.start && p.to <= range.end);
+        if (!isAvailable) {
+            alert("⚠️ Aquesta habitació tipus 'Casa' no està disponible.");
+            return;
+        }
+    }
+
+    // 2. Validar capacidad
+    const occs = people.filter(x => x.roomId === r.id && x.id !== p.id && x.from < p.to && x.to > p.from);
+    if (occs.length >= r.capacity) {
+        alert("⚠️ Habitació plena!");
+        return;
+    }
+
+    // 3. Guardar cambio
+    try {
+        await updateDoc(doc(db, 'people', p.id), { roomId: r.id });
+        render(); 
+    } catch (err) { console.error("Error movent la persona:", err); }
+};
+
 </script>
 </body>
 </html>
