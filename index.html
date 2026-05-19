@@ -117,7 +117,7 @@ summary::-webkit-details-marker{display:none}
 <body>
 <div class="app">
   <header>
-    <div class="logo">Konvent Habitacions</div>
+    <img src="konvent-logo.webp" alt="Konvent Logo" class="logo" style="width: 120px;">
     <div class="tabs">
         <button class="tab" onclick="setTab(0)">Persones</button>
       <button class="tab" onclick="setTab(1)">Habitacions</button>
@@ -431,64 +431,78 @@ function render() {
 </div>
 
       <button class="btn primary" onclick="addRoom()" style="margin-top:auto">+ Afegir</button>
-    </div></div>
-    <div class="grid">`;
+    </div></div>`;
 
-    rooms.sort((a,b)=>(a.floor||'').localeCompare(b.floor||'')||a.name.localeCompare(b.name)).forEach(r => {
-      if (editRoomId===r.id) {
-        h += `<div class="card" style="grid-column:1/-1">
-          <div class="form-row">
-            <div class="field"><label>Planta</label><input id="erFloor" value="${e(r.floor||'')}"></div>
-            <div class="field"><label>Nom o número</label><input id="erName" value="${e(r.name)}"></div>
-            <div class="field"><label>Capacitat</label><input id="erCap" type="number" value="${r.capacity}"></div>
-            <div class="field">
-              <label>Tipus</label>
-              <select id="erType" onchange="toggleCasaFields()" style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--border); background:var(--surface1); color:var(--text1)">
-                <option value="resident" ${r.type === 'resident' ? 'selected' : ''}>Resident</option>
-                <option value="casa" ${r.type === 'casa' ? 'selected' : ''}>Casa</option>
-              </select>
-            </div>
-          </div>
-          
-          <div id="casaDatesSection" style="display:${r.type === 'casa' ? 'block' : 'none'}; margin-top:15px; padding:15px; background:var(--surface2); border-radius:8px; border:1px dashed var(--border)">
-            <label style="display:block; font-size:12px; margin-bottom:10px; font-weight:bold">Disponibilitat de la Casa (Rangs de dates)</label>
-            <div id="availList">
-              ${(r.availabilities || []).map((range, idx) => `
-                <div class="avail-row" style="display:flex; gap:5px; margin-bottom:8px; align-items:center;">
-                  <input type="date" class="avail-start" value="${range.start}" style="padding:4px; border-radius:4px; border:1px solid var(--border)">
-                  <span>fins a</span>
-                  <input type="date" class="avail-end" value="${range.end}" style="padding:4px; border-radius:4px; border:1px solid var(--border)">
-                  <button class="btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px">✕</button>
-                </div>
-              `).join('')}
-            </div>
-            <button class="btn" style="margin-top:5px" onclick="addAvailRange()">+ Afegir rang de dates</button>
-          </div>
+    const sortedRooms = rooms.sort((a,b)=>(a.floor||'').localeCompare(b.floor||'')||a.name.localeCompare(b.name));
+    const floors = [...new Set(sortedRooms.map(r => r.floor||'?'))];
 
-          <div style="margin-top:15px;display:flex;gap:8px">
-            <button class="btn primary" onclick="updateRoom('${r.id}')">Guardar</button>
-            <button class="btn" onclick="setEditRoom(null)">Cancel·lar</button>
-          </div>
-        </div>`;    
-      } else {
-        h += `<div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div>
-              <b style="color:${r.type === 'casa' ? '#e67e22' : 'inherit'}">${e(r.name)}</b> 
-              <span class="badge">${r.type === 'casa' ? '🏠 Casa' : '👤 Res.'}</span>
-              <span class="badge" style="background:var(--surface2)">P${e(r.floor||'?')}</span><br>
-              <small style="color:var(--text2)">Capacitat: ${r.capacity} persones</small>
-              ${r.type === 'casa' ? `<br><small style="color:var(--text3)">${(r.availabilities || []).length} rangs de dates</small>` : ''}
+    floors.forEach(floor => {
+      const floorRooms = sortedRooms.filter(r => (r.floor||'?') === floor);
+      h += `<div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text2)">Planta ${e(floor)}</span>
+          <div style="flex:1;height:2px;background:var(--text);border-radius:1px;opacity:.15"></div>
+          <span style="font-size:11px;color:var(--text3)">${floorRooms.length} habitació${floorRooms.length!==1?'s':''}</span>
+        </div>
+        <div class="grid">`;
+
+      floorRooms.forEach(r => {
+        if (editRoomId===r.id) {
+          h += `<div class="card" style="grid-column:1/-1">
+            <div class="form-row">
+              <div class="field"><label>Planta</label><input id="erFloor" value="${e(r.floor||'')}"></div>
+              <div class="field"><label>Nom o número</label><input id="erName" value="${e(r.name)}"></div>
+              <div class="field"><label>Capacitat</label><input id="erCap" type="number" value="${r.capacity}"></div>
+              <div class="field">
+                <label>Tipus</label>
+                <select id="erType" onchange="toggleCasaFields()" style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--border); background:var(--surface1); color:var(--text1)">
+                  <option value="resident" ${r.type === 'resident' ? 'selected' : ''}>Resident</option>
+                  <option value="casa" ${r.type === 'casa' ? 'selected' : ''}>Casa</option>
+                </select>
+              </div>
             </div>
-            <div style="display:flex;gap:4px">
-              <button class="btn" onclick="setEditRoom('${r.id}')">✎</button>
-              <button class="btn danger" onclick="delItem('rooms','${r.id}')">✕</button>
+            
+            <div id="casaDatesSection" style="display:${r.type === 'casa' ? 'block' : 'none'}; margin-top:15px; padding:15px; background:var(--surface2); border-radius:8px; border:1px dashed var(--border)">
+              <label style="display:block; font-size:12px; margin-bottom:10px; font-weight:bold">Disponibilitat de la Casa (Rangs de dates)</label>
+              <div id="availList">
+                ${(r.availabilities || []).map((range, idx) => `
+                  <div class="avail-row" style="display:flex; gap:5px; margin-bottom:8px; align-items:center;">
+                    <input type="date" class="avail-start" value="${range.start}" style="padding:4px; border-radius:4px; border:1px solid var(--border)">
+                    <span>fins a</span>
+                    <input type="date" class="avail-end" value="${range.end}" style="padding:4px; border-radius:4px; border:1px solid var(--border)">
+                    <button class="btn danger" onclick="this.parentElement.remove()" style="padding:4px 8px">✕</button>
+                  </div>
+                `).join('')}
+              </div>
+              <button class="btn" style="margin-top:5px" onclick="addAvailRange()">+ Afegir rang de dates</button>
             </div>
-          </div>
-        </div>`;
-      }
+
+            <div style="margin-top:15px;display:flex;gap:8px">
+              <button class="btn primary" onclick="updateRoom('${r.id}')">Guardar</button>
+              <button class="btn" onclick="setEditRoom(null)">Cancel·lar</button>
+            </div>
+          </div>`;
+        } else {
+          h += `<div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <b style="color:${r.type === 'casa' ? '#e67e22' : 'inherit'}">${e(r.name)}</b> 
+                <span class="badge">${r.type === 'casa' ? '🏠 Casa' : '👤 Res.'}</span>
+                <span class="badge" style="background:var(--surface2)">P${e(r.floor||'?')}</span><br>
+                <small style="color:var(--text2)">Capacitat: ${r.capacity} persones</small>
+                ${r.type === 'casa' ? `<br><small style="color:var(--text3)">${(r.availabilities || []).length} rangs de dates</small>` : ''}
+              </div>
+              <div style="display:flex;gap:4px">
+                <button class="btn" onclick="setEditRoom('${r.id}')">✎</button>
+                <button class="btn danger" onclick="delItem('rooms','${r.id}')">✕</button>
+              </div>
+            </div>
+          </div>`;
+        }
+      });
+
+      h += `</div></div>`; // close .grid and floor wrapper
     });
-    h += `</div>`;
   }
 
   // ── 2: GRUPS ────────────────────────────────────────────────────────────────
