@@ -15,7 +15,7 @@
   --radius:8px;--radius-lg:12px;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:18px;min-height:100vh}
-.app{max-width:1000px;margin:0 auto;padding:0 0 60px}
+.app{max-width:1400px;margin:0 auto;padding:0 0 60px}
 header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:30;flex-wrap:wrap}
 .logo{font-size:23px;font-weight:700;margin-right:6px;white-space:nowrap}
 .tabs{display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -48,10 +48,10 @@ header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-botto
 
 
 /* Calendar desktop */
-.cal-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
-.cal-table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:12px;table-layout:fixed}
+.cal-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface); max-height: calc(100vh - 230px);}
+.cal-table{border-collapse:separate;border-spacing:0;width:max-content;font-size:12px;table-layout:fixed}
 .cal-table th,.cal-table td{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
-.cal-table th{background:var(--surface2);position:sticky;top:0;z-index:20;height:36px;text-align:center;font-weight:600;font-size:11px;color:var(--text2)}
+.cal-table th{background:var(--surface2);position:sticky;top:0;z-index:20;height:36px;text-align:center;font-weight:600;font-size:11px;color:var(--text2);overflow:hidden}
 .room-col{position:sticky;left:0;background:var(--surface2)!important;z-index:21!important;text-align:left;padding:0 10px;width:140px;min-width:140px;max-width:140px}
 .floor-sep td,.floor-sep th{border-bottom:2.5px solid var(--text)!important}
 .p-bar{width:100%;height:100%;border-radius:3px;font-size:10px;display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
@@ -117,7 +117,8 @@ summary::-webkit-details-marker{display:none}
 <body>
 <div class="app">
   <header>
-    <div class="logo">Konvent Habitacions</div>
+    <img src="konvent-logo.webp" width="120px">
+    <div class="logo">Habitacions</div>
     <div class="tabs">
         <button class="tab" onclick="setTab(0)">Persones</button>
       <button class="tab" onclick="setTab(1)">Habitacions</button>
@@ -194,9 +195,10 @@ function contrastStyle(hex) {
 
 // ── State ────────────────────────────────────────────────────────────────────
 let rooms = [], people = [], groups = [];
-let tab = 0, calOffset = 0;
+let tab = 3, calOffset = 0;
 let assignCtx = null, editRoomId = null, editPersonId = null, editGroupId = null;
 let pendingGroupColor = null;
+let newGroupMembers = [];
 let historial = [];      // Pila para Deshacer (Undo)
 let historialRedo = [];  // Pila para Rehacer (Redo)
 const LIMITE_HISTORIAL = 30;
@@ -244,6 +246,10 @@ window.openAssignRoom   = (rId,d) => { assignCtx={rId,d}; render(); };
 window.closeModal = () => { assignCtx=null; render(); };
 window.pickColor  = hex => { pendingGroupColor=hex; render(); };
 
+window.addGroupMemberRow = () => { newGroupMembers.push({name:'',from:'',to:''}); render(); };
+window.removeGroupMemberRow = idx => { newGroupMembers.splice(idx,1); render(); };
+window.updateGroupMember = (idx,field,val) => { newGroupMembers[idx][field]=val; };
+
 window.addRoom = async () => {
   const name = document.getElementById('rName').value.trim();
   if (!name) return;
@@ -281,12 +287,27 @@ window.addRoom = async () => {
 };
 
 window.addGroup = async () => {
-  const name=document.getElementById('gName').value.trim();
+  const name = document.getElementById('gName').value.trim();
   if (!name) return;
-  const color = pendingGroupColor || PALETTE[groups.length % PALETTE.length];
-  await addDoc(collection(db,'groups'),{name,color});
+  const color   = pendingGroupColor || PALETTE[groups.length % PALETTE.length];
+  const gFrom   = document.getElementById('gFrom').value;
+  const gTo     = document.getElementById('gTo').value;
+  const groupRef = await addDoc(collection(db,'groups'), {name, color, from:gFrom, to:gTo});
+  const rows = document.querySelectorAll('.new-member-row');
+  for (const row of rows) {
+    const pName = row.querySelector('.m-name').value.trim();
+    if (!pName) continue;
+    const pFrom = row.querySelector('.m-from').value || gFrom;
+    const pTo   = row.querySelector('.m-to').value   || gTo;
+    if (!pFrom || !pTo) continue;
+    await addDoc(collection(db,'people'), {name:pName, from:pFrom, to:pTo, groupId:groupRef.id, roomId:null});
+  }
   document.getElementById('gName').value='';
+  document.getElementById('gFrom').value='';
+  document.getElementById('gTo').value='';
+  newGroupMembers=[];
   pendingGroupColor=null;
+  render();
 };
 
 window.saveGroup = async id => {
@@ -534,18 +555,39 @@ function render() {
   // ── 2: GRUPS ────────────────────────────────────────────────────────────────
   if (tab===2) {
     const newColor = pendingGroupColor || PALETTE[groups.length % PALETTE.length];
+    const filledCount = newGroupMembers.filter(m=>m.name.trim()).length;
     h += `<div class="form-box">
       <span class="section-label" style="margin-top:0">Nou grup</span>
-      <div class="form-row" style="align-items:flex-end">
-        <div class="field"><label>Nom del grup</label><input id="gName" placeholder="Escriure aqui el nom de la residència o grup.."></div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="field" style="flex:2;min-width:160px"><label>Nom del grup</label><input id="gName" placeholder="Família, Amics…"></div>
+        <div class="field"><label>Entrada grup</label><input id="gFrom" type="date"></div>
+        <div class="field"><label>Sortida grup</label><input id="gTo" type="date"></div>
         <div>
-          <label class="field" style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;display:block">Color</label>
+          <label style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;display:block">Color</label>
           <div class="color-swatches">${PALETTE.map(c=>`<div class="swatch${c===newColor?' selected':''}" style="background:${c}" onclick="pickColor('${c}')"></div>`).join('')}</div>
         </div>
-        <button class="btn primary" onclick="addGroup()" style="margin-top:auto">+ Crear</button>
       </div>
-    </div>
-    <div class="grid">`;
+      <div style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Persones del grup</span>
+          <button class="btn" onclick="addGroupMemberRow()" style="font-size:11px;padding:4px 10px">+ Persona</button>
+        </div>
+        ${newGroupMembers.length===0
+          ? `<div style="font-size:12px;color:var(--text3);padding:6px 4px;font-style:italic">Cap persona. Prem "+ Persona" per afegir membres.</div>`
+          : newGroupMembers.map((m,i)=>`
+            <div class="new-member-row" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-bottom:6px;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:6px">
+              <div class="field" style="flex:2;min-width:120px"><label>Nom</label><input class="m-name" value="${m.name}" placeholder="Nom i cognoms" oninput="updateGroupMember(${i},'name',this.value)"></div>
+              <div class="field"><label>Entrada <small style="font-weight:400;color:var(--text3)">(opcional)</small></label><input class="m-from" type="date" value="${m.from}" oninput="updateGroupMember(${i},'from',this.value)"></div>
+              <div class="field"><label>Sortida <small style="font-weight:400;color:var(--text3)">(opcional)</small></label><input class="m-to" type="date" value="${m.to}" oninput="updateGroupMember(${i},'to',this.value)"></div>
+              <button class="btn danger" onclick="removeGroupMemberRow(${i})" style="padding:4px 8px;margin-top:auto">✕</button>
+            </div>`).join('')
+        }
+      </div>
+      <button class="btn primary" onclick="addGroup()" style="width:100%;padding:10px">
+        ✓ Crear grup${filledCount>0 ? ' i '+filledCount+' persona'+(filledCount!==1?'es':'') : ''}
+      </button>
+    </div>`;
+    h += `<div class="grid">`;
 
     groups.forEach(g => {
       const cs = contrastStyle(g.color);
@@ -572,6 +614,7 @@ function render() {
             <div style="display:flex;align-items:center;gap:8px">
               <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${cs.bg};flex-shrink:0"></span>
               <b>${e(g.name)}</b>
+              ${g.from&&g.to?`<small style="color:var(--text3)">${g.from} → ${g.to}</small>`:''}
               <small style="color:var(--text2)">${members.length} persones</small>
             </div>
             <div style="display:flex;gap:4px">
@@ -655,7 +698,7 @@ function render() {
     days.forEach(d => {
       const isToday = d===today;
       const nomDia = new Date(d+'T12:00:00').toLocaleDateString('ca', { weekday: 'short' });
-      h += `<th style="${isToday?'background:var(--blue-bg);color:var(--blue)':''}">${d.slice(-2)}<br><small style="font-weight:400;opacity:.7">${nomDia}</small></th>`;
+      h += `<th style="width:${colW}px;min-width:${colW}px;max-width:${colW}px;box-sizing:content-box;padding:0;${isToday?'background:var(--blue-bg);color:var(--blue)':''}">${d.slice(-2)}<br><small style="font-weight:400;opacity:.7">${nomDia}</small></th>`;
     });
     h += `</tr>`;
 
@@ -666,11 +709,11 @@ function render() {
     const occRowH = 36;
     h += `<tr>
       <th class="room-col" style="height:${occRowH}px;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.05em;border-bottom:2px solid var(--border2)">TOTAL</th>
-      <td colspan="${daysInMonth}" style="padding:0;position:relative;height:${occRowH}px;min-width:${daysInMonth*colW}px;background:var(--surface2);border-bottom:2px solid var(--border2)">`;
+      <td colspan="${daysInMonth}" style="padding:0;position:relative;height:${occRowH}px;min-width:${daysInMonth*(colW+1)}px;background:var(--surface2);border-bottom:2px solid var(--border2)">`;
 
     segments.forEach(seg => {
-      const leftPx  = seg.startIdx * colW;
-      const widthPx = (seg.endIdx - seg.startIdx + 1) * colW;
+      const leftPx  = seg.startIdx * (colW+1);
+      const widthPx = (seg.endIdx - seg.startIdx + 1) * (colW+1);
       const maxCount = Math.max(...dailyCount.filter(c=>c>0), 1);
       const pct = seg.count / maxCount;
       // color: green→yellow→red gradient based on % of max
@@ -726,7 +769,7 @@ h += `<tr class="unassigned-row">
     
     <div style="display:flex; position:absolute; left:0; top:0; bottom:0; width:${daysInMonth * colW}px; z-index:1">
       ${days.map(d => `
-        <div style="width:${colW}px;" 
+        <div style="width:${colW+1}px;" 
              ondragover="event.preventDefault(); this.style.background='rgba(255,193,7,0.1)'" 
              ondragleave="this.style.background=''"
              ondrop="handleDrop(event, 'unassigned', '${d}')">
@@ -738,8 +781,8 @@ h += `<tr class="unassigned-row">
 uAssignments.forEach(({p, ti}) => {
   const s = p.from < calStart ? calStart : p.from;
   const en = p.to > calEnd ? calEnd : p.to;
-  const left = diff(calStart, s) * colW;
-  const wid = Math.max(diff(s, en), 0.5) * colW;
+  const left = diff(calStart, s) * (colW+1);
+  const wid = Math.max(diff(s, en), 0.5) * (colW+1);
   
   // Calculamos posición vertical más compacta (20px por carril)
   const topPos = ti * 20 + 4; 
@@ -782,8 +825,8 @@ h += `</div></td></tr>`;
           <b>${e(r.name)}</b><br>
           <span style="font-size: 1.4em; line-height: 1; display: block; margin-top: 2px;">${'🛏️ '.repeat(r.capacity)}</span>
         </td> 
-        <td colspan="${daysInMonth}" style="padding:0;position:relative;height:${rowH}px;min-width:${daysInMonth*colW}px;${sepStyle}">
-          <div style="display:flex;position:absolute;left:0;top:0;bottom:0;width:${daysInMonth*colW}px;z-index:1">
+        <td colspan="${daysInMonth}" style="padding:0;position:relative;height:${rowH}px;min-width:${daysInMonth*(colW+1)}px;${sepStyle}">
+          <div style="display:flex;position:absolute;left:0;top:0;bottom:0;width:${daysInMonth*(colW+1)}px;z-index:1">
             ${days.map(d => {
               // LÓGICA DE BLOQUEO VISUAL
               let isBlocked = false;
@@ -796,7 +839,7 @@ h += `</div></td></tr>`;
               const clickAction = isBlocked ? '' : `openAssignRoom('${r.id}','${d}')`;
 
               return `<div 
-        style="width:${colW}px;border-right:1px dashed var(--border);${bg};${cursor}" 
+        style="width:${colW+1}px;border-right:1px dashed var(--border);${bg};${cursor}" 
         onclick="${clickAction}"
         ${!isBlocked ? `
             ondragover="event.preventDefault(); this.style.background='rgba(255,255,255,0.1)'" 
@@ -806,13 +849,13 @@ h += `</div></td></tr>`;
     ></div>`;
             }).join('')}
           </div>
-          <div style="position:absolute;left:0;top:0;bottom:0;width:${daysInMonth*colW}px;z-index:2;pointer-events:none">`;
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${daysInMonth*(colW+1)}px;z-index:2;pointer-events:none">`;
 
       assignments.forEach(({p,ti})=>{
         const s = p.from<calStart ? calStart : p.from;
         const en = p.to>calEnd ? calEnd : p.to;
-        const left = diff(calStart,s)*colW;
-        const wid  = Math.max(diff(s,en),0.5)*colW;
+        const left = diff(calStart,s)*(colW+1);
+        const wid  = Math.max(diff(s,en),0.5)*(colW+1);
         const topP = (ti/totalTracks)*100;
         const hP   = 100/totalTracks;
         const g    = groups.find(x=>x.id===p.groupId);
@@ -876,32 +919,30 @@ h += `</div></td></tr>`;
     if (assignCtx.pId) {
       const p = people.find(x=>x.id===assignCtx.pId);
       m += `<h3>Assignar habitació</h3><p class="modal-sub">${e(p.name)} · ${p.from} → ${p.to}</p>`;
-rooms.sort((a,b)=>(a.floor||'').localeCompare(b.floor||'')||a.name.localeCompare(b.name)).forEach(r=>{
-        // 1. FILTRO DE DISPONIBILIDAD PARA "CASA"
-        if (r.type === 'casa') {
-          const guestFrom = p.from;
-          const guestTo = p.to;
-          
-          // Comprobamos si la estancia del huésped cabe en algún rango de la casa
-          const isAvailable = (r.availabilities || []).some(range => {
-            return guestFrom >= range.start && guestTo <= range.end;
-          });
 
-          // Si la casa no está disponible para estas fechas, saltamos esta habitación (no la mostramos)
-          if (!isAvailable) return;
-        }
+      const sortedForModal = [...rooms].sort((a,b)=>(a.floor||'').localeCompare(b.floor||'')||a.name.localeCompare(b.name));
+      const floorsInModal  = [...new Set(sortedForModal.map(r=>r.floor||'?'))];
 
-        // 2. LÓGICA DE OCUPACIÓN (lo que ya tenías)
-        const occs = people.filter(x=>x.roomId===r.id&&x.id!==p.id&&x.from<p.to&&x.to>p.from);
-        const full = occs.length >= r.capacity;
-        const isCurrent = p.roomId===r.id;
-
-        // 3. DIBUJAR LA OPCIÓN
-        m += `<div class="assign-opt" style="${isCurrent?'background:var(--blue-bg);border-color:var(--blue-border)':''}" onclick="assignLlit('${p.id}','${r.id}')">
-        <span><b>${e(r.name)}</b><br><small style="color:var(--text2)">Ocupació: ${occs.length}/${r.capacity}</small></span>          ${isCurrent?`<span class="badge" style="background:var(--blue-bg);color:var(--blue)">Actual</span>`
-           :full?`<span class="badge" style="background:var(--red-bg);color:var(--red)">Plena</span>`
-           :`<span class="badge" style="background:var(--green-bg);color:var(--green)">Disponible</span>`}
+      floorsInModal.forEach(floor => {
+        m += `<div style="display:flex;align-items:center;gap:8px;margin:10px 0 6px">
+          <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)">Planta ${e(floor)}</span>
+          <div style="flex:1;height:1.5px;background:var(--border2);border-radius:1px"></div>
         </div>`;
+        sortedForModal.filter(r=>(r.floor||'?')===floor).forEach(r => {
+          if (r.type === 'casa') {
+            const isAvailable = (r.availabilities || []).some(range => p.from >= range.start && p.to <= range.end);
+            if (!isAvailable) return;
+          }
+          const occs = people.filter(x=>x.roomId===r.id&&x.id!==p.id&&x.from<p.to&&x.to>p.from);
+          const full = occs.length >= r.capacity;
+          const isCurrent = p.roomId===r.id;
+          m += `<div class="assign-opt" style="${isCurrent?'background:var(--blue-bg);border-color:var(--blue-border)':''}" onclick="assignLlit('${p.id}','${r.id}')">
+            <span><b>${e(r.name)}</b><br><small style="color:var(--text2)">Ocupació: ${occs.length}/${r.capacity}</small></span>
+            ${isCurrent ?`<span class="badge" style="background:var(--blue-bg);color:var(--blue)">Actual</span>`
+              :full     ?`<span class="badge" style="background:var(--red-bg);color:var(--red)">Plena</span>`
+                        :`<span class="badge" style="background:var(--green-bg);color:var(--green)">Disponible</span>`}
+          </div>`;
+        });
       });
     } else if (assignCtx.rId) {
       const r = rooms.find(x=>x.id===assignCtx.rId);
