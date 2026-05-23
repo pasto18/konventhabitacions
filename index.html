@@ -112,6 +112,21 @@ header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-botto
 
 summary{list-style:none}
 summary::-webkit-details-marker{display:none}
+.comment-fab{position:fixed;bottom:24px;right:20px;z-index:50;background:var(--text);color:var(--bg);border:none;border-radius:50px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;gap:7px;font-family:inherit;transition:opacity .15s}
+.comment-fab:hover{opacity:.85}
+.comment-panel{position:fixed;bottom:0;right:0;width:100%;max-width:400px;height:70vh;background:var(--surface);border-top:1px solid var(--border);border-left:1px solid var(--border);border-radius:16px 0 0 0;z-index:80;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.12);transform:translateY(100%);transition:transform .25s ease}
+.comment-panel.open{transform:translateY(0)}
+.comment-panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.comment-panel-header h4{font-size:14px;font-weight:600;margin:0}
+.comment-list{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.comment-item{background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:13px}
+.comment-author{font-weight:600;font-size:12px;color:var(--blue);margin-bottom:3px}
+.comment-time{font-size:10px;color:var(--text3);margin-top:4px}
+.comment-form{padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:7px}
+.comment-form input,.comment-form textarea{padding:8px 10px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-family:inherit;background:var(--surface);color:var(--text);resize:none;width:100%}
+.comment-form textarea{height:60px}
+.comment-form input:focus,.comment-form textarea:focus{outline:none;border-color:var(--blue)}
+@media(max-width:480px){.comment-panel{max-width:100%;border-radius:16px 16px 0 0;border-left:none}}
 </style>
 </head>
 <body>
@@ -140,9 +155,28 @@ summary::-webkit-details-marker{display:none}
   <div id="root" class="panel"></div>
 </div>
 
+<button class="comment-fab" id="commentFab">
+  💬 <span id="commentFabLabel">Comentaris</span>
+</button>
+
+<div class="comment-panel" id="commentPanel">
+  <div class="comment-panel-header">
+    <h4>💬 Comentaris</h4>
+    <button class="btn" id="commentClose" style="padding:4px 10px;font-size:12px">Tancar ✕</button>
+  </div>
+  <div class="comment-list" id="commentList">
+    <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Carregant…</div>
+  </div>
+  <div class="comment-form">
+    <input id="commentAuthor" placeholder="El teu nom" maxlength="60">
+    <textarea id="commentText" placeholder="Escriu el teu comentari…" maxlength="500"></textarea>
+    <button class="btn primary" id="commentSubmit" style="width:100%">Enviar comentari</button>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getDatabase, ref, onValue, push, set as rtdbSet, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -220,6 +254,10 @@ onSnapshot(collection(db,'rooms'),   s => { rooms   = s.docs.map(d=>({id:d.id,..
 onSnapshot(collection(db,'groups'),  s => { groups  = s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.name.localeCompare(b.name)); render(); });
 onSnapshot(collection(db,'people'),  s => { people  = s.docs.map(d=>({id:d.id,...d.data()})); render(); });
 
+onSnapshot(query(collection(db,'comments'), orderBy('createdAt','desc')), snap => {
+  renderComments(snap.docs.map(d=>({id:d.id,...d.data()})));
+});
+
 // ── Utils ─────────────────────────────────────────────────────────────────────
 const e    = s => s?.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') || '';
 const pad  = n => n < 10 ? '0'+n : n;
@@ -227,8 +265,6 @@ const ds   = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const diff = (a,b) => Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
 // Convierte "2026-05-12" en "12-05"
 const fmtDM = s => s ? s.split('-').reverse().slice(0, 2).join('-') : '';
-const ultimaAccio = historial.pop();
-historialRedo.push(ultimaAccio); // La guardamos por si queremos "volver a hacer" 🔜
 
 function groupStyle(groupId) {
   const g = groups.find(x => x.id === groupId);
@@ -1100,7 +1136,7 @@ window.rehacer = async () => {
     }
 };
 
-ocument.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', (e) => {
     // Detectamos si se pulsa Control o Command (metaKey es la tecla Command en Mac)
     const isModKey = e.ctrlKey || e.metaKey;
 
@@ -1121,6 +1157,51 @@ ocument.addEventListener('keydown', (e) => {
     }
 });
 
+// ── Attach comment button listeners (avoids onclick/module scope issues) ──────
+// ── Comments functions ───────────────────────────────────────────────────────
+let commentsOpen = false;
+
+function toggleComments() {
+  commentsOpen = !commentsOpen;
+  document.getElementById('commentPanel').classList.toggle('open', commentsOpen);
+  document.getElementById('commentFabLabel').textContent = commentsOpen ? 'Tancar' : 'Comentaris';
+}
+
+async function submitComment() {
+  const author = document.getElementById('commentAuthor').value.trim();
+  const text   = document.getElementById('commentText').value.trim();
+  if (!author || !text) { alert('Cal posar el teu nom i el comentari.'); return; }
+  const btn = document.getElementById('commentSubmit');
+  btn.disabled = true; btn.textContent = 'Enviant…';
+  try {
+    await addDoc(collection(db,'comments'), { author, text, createdAt: new Date().toISOString() });
+    document.getElementById('commentText').value = '';
+  } catch(err) { alert('Error enviant: ' + err.message); }
+  btn.disabled = false; btn.textContent = 'Enviar comentari';
+}
+
+function renderComments(comments) {
+  const list = document.getElementById('commentList');
+  if (!list) return;
+  if (comments.length === 0) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Sense comentaris. Sigues el primer!</div>';
+    return;
+  }
+  list.innerHTML = comments.map(c => {
+    const d = c.createdAt ? new Date(c.createdAt).toLocaleString('ca-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    const safeAuthor = (c.author||'Anonim').replace(/</g,'&lt;');
+    const safeText   = (c.text||'').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    return `<div class="comment-item">
+      <div class="comment-author">${safeAuthor}</div>
+      <div style="line-height:1.5">${safeText}</div>
+      <div class="comment-time">${d}</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('commentFab').addEventListener('click', toggleComments);
+document.getElementById('commentClose').addEventListener('click', toggleComments);
+document.getElementById('commentSubmit').addEventListener('click', submitComment);
 </script>
 </body>
 </html>
