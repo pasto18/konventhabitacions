@@ -56,6 +56,15 @@ header{padding:12px 16px 0;display:flex;align-items:center;gap:10px;border-botto
 .floor-sep td,.floor-sep th{border-bottom:2.5px solid var(--text)!important}
 .p-bar{width:100%;height:100%;border-radius:3px;font-size:10px;display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
 .p-bar:hover{filter:brightness(.92)}
+.p-bar-wrap{position:absolute;pointer-events:auto}
+.resize-handle{position:absolute;top:0;bottom:0;width:12px;cursor:ew-resize;z-index:5;display:flex;align-items:center;justify-content:center;font-size:8px;color:rgba(255,255,255,.8);font-weight:700;opacity:0;transition:opacity .15s;user-select:none}
+.resize-handle:hover,.p-bar-wrap:hover .resize-handle{opacity:1}
+.resize-handle.left{left:0;background:linear-gradient(to right,rgba(0,0,0,.25),transparent);border-radius:3px 0 0 3px}
+.resize-handle.right{right:0;background:linear-gradient(to left,rgba(0,0,0,.25),transparent);border-radius:0 3px 3px 0}
+.day-sel{background:rgba(24,95,165,.22)!important;outline:1px solid var(--blue)}
+.quick-add-modal{background:var(--surface);border-radius:var(--radius-lg);padding:22px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.quick-add-modal h3{font-size:15px;font-weight:600;margin-bottom:4px}
+.qa-sub{font-size:12px;color:var(--text2);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
 
 .unassigned-row {
   background-color: rgba(255, 193, 7, 0.05); /* Un tono amarillento muy suave */
@@ -231,6 +240,7 @@ function contrastStyle(hex) {
 let rooms = [], people = [], groups = [];
 let tab = 3, calOffset = 0;
 let assignCtx = null, editRoomId = null, editPersonId = null, editGroupId = null;
+let ds_sel = null; // drag-select state {roomId,startIdx,endIdx,active}
 let pendingGroupColor = null;
 let newGroupMembers = [];
 let historial = [];      // Pila para Deshacer (Undo)
@@ -279,7 +289,12 @@ window.setEditGroup  = id => { editGroupId=id; pendingGroupColor=id?groups.find(
 window.changeCalOffset = v => { calOffset+=v; render(); };
 window.openAssignPerson = pId => { assignCtx={pId}; render(); };
 window.openAssignRoom   = (rId,d) => { assignCtx={rId,d}; render(); };
-window.closeModal = () => { assignCtx=null; render(); };
+window.closeModal = () => {
+  assignCtx=null;
+  const ov = document.getElementById('modalOverlay');
+  if (ov) ov.remove();
+  render();
+};
 window.pickColor  = hex => { pendingGroupColor=hex; render(); };
 
 window.addGroupMemberRow = () => { newGroupMembers.push({name:'',from:'',to:''}); render(); };
@@ -472,6 +487,8 @@ function renderPersonCard(p) {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
+  const ov = document.getElementById('modalOverlay');
+  if (ov) ov.remove();
   const root = document.getElementById('root');
   document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', i===tab));
   let h = '';
@@ -734,7 +751,8 @@ function render() {
     days.forEach(d => {
       const isToday = d===today;
       const nomDia = new Date(d+'T12:00:00').toLocaleDateString('ca', { weekday: 'short' });
-      h += `<th style="width:${colW}px;min-width:${colW}px;max-width:${colW}px;box-sizing:content-box;padding:0;${isToday?'background:var(--blue-bg);color:var(--blue)':''}">${d.slice(-2)}<br><small style="font-weight:400;opacity:.7">${nomDia}</small></th>`;
+      const dow = new Date(d+'T12:00:00').getDay(); // 0=Sun,1=Mon
+      h += `<th style="width:${colW}px;min-width:${colW}px;max-width:${colW}px;padding:0;${isToday?'background:var(--blue-bg);color:var(--blue)':''};${dow===1?'box-shadow:inset 2px 0 0 var(--border2)':''}">${d.slice(-2)}<br><small style="font-weight:400;opacity:.7">${nomDia}</small></th>`;
     });
     h += `</tr>`;
 
@@ -843,7 +861,7 @@ h += `</div></td></tr>`;
       const nextRoom = visibleRooms[ri+1];
       const isLastOfFloor = !nextRoom || (nextRoom.floor||'?') !== (r.floor||'?');
 
-      const pList = people.filter(p=>p.roomId===r.id&&p.from<calEnd&&p.to>calStart && p.to >= today)
+      const pList = people.filter(p=>p.roomId===r.id&&p.from<calEnd&&p.to>calStart)
                           .sort((a,b)=>a.from.localeCompare(b.from));
       const tracks=[], assignments=[];
       pList.forEach(p=>{
@@ -874,13 +892,14 @@ h += `</div></td></tr>`;
               const cursor = isBlocked ? 'cursor:not-allowed' : 'cursor:pointer';
               const clickAction = isBlocked ? '' : `openAssignRoom('${r.id}','${d}')`;
 
-              return `<div 
-        style="width:${colW+1}px;border-right:1px dashed var(--border);${bg};${cursor}" 
-        onclick="${clickAction}"
+              const di = days.indexOf(d);
+              return `<div
+        data-di="${di}" data-date="${d}" data-rid="${r.id}" data-blocked="${isBlocked?1:0}"
+        style="width:${colW+1}px;border-right:1px dashed var(--border);${new Date(d+'T12:00:00').getDay()===1?'box-shadow:inset 2px 0 0 var(--border2)':''};${bg};${cursor};user-select:none"
         ${!isBlocked ? `
-            ondragover="event.preventDefault(); this.style.background='rgba(255,255,255,0.1)'" 
-            ondragleave="this.style.background='${bg}'"
-            ondrop="handleDrop(event, '${r.id}', '${d}')"
+            ondragover="event.preventDefault()"
+            ondragleave=""
+            ondrop="handleDrop(event,'${r.id}','${d}')"
         ` : ''}
     ></div>`;
             }).join('')}
@@ -896,14 +915,16 @@ h += `</div></td></tr>`;
         const hP   = 100/totalTracks;
         const g    = groups.find(x=>x.id===p.groupId);
         const cs   = contrastStyle(g?.color||'#3B82F6');
-        h += `<div style="position:absolute;left:${left}px;width:${wid}px;top:${topP}%;height:${hP}%;padding:2px;pointer-events:auto">
-          <div class="p-bar" draggable="true" 
-         ondragstart="event.dataTransfer.setData('text/plain', '${p.id}')"
-         onclick="openAssignPerson('${p.id}')" 
-         style="background:${cs.bg};color:${cs.text};cursor:grab" 
-         title="${e(p.name)}">
-        ${e(p.name)}
+        h += `<div class="p-bar-wrap" data-pid="${p.id}" style="position:absolute;left:${left}px;width:${wid}px;top:${topP}%;height:${hP}%;padding:2px">
+          <div class="resize-handle left" data-resize="left" data-pid="${p.id}">◀</div>
+          <div class="p-bar" draggable="true"
+               ondragstart="event.dataTransfer.setData('text/plain','${p.id}')"
+               onclick="openAssignPerson('${p.id}')"
+               style="background:${cs.bg};color:${cs.text};cursor:grab"
+               title="${e(p.name)} (${p.from} → ${p.to})">
+            ${e(p.name)}
           </div>
+          <div class="resize-handle right" data-resize="right" data-pid="${p.id}">▶</div>
         </div>`;
       });
       h += `</div></td></tr>`;
@@ -918,7 +939,7 @@ h += `</div></td></tr>`;
         <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--text)">Planta ${e(floor)}</div>`;
       floorRooms.forEach(r=>{
         // CAMBIO 2: Aplicado filtro de fecha actual en móvil
-        const occs = people.filter(p=>p.roomId===r.id && p.to >= today).sort((a,b)=>a.from.localeCompare(b.from));
+        const occs = people.filter(p=>p.roomId===r.id).sort((a,b)=>a.from.localeCompare(b.from));
         h += `<div style="margin-bottom:12px">
           <div style="font-weight:600;font-size:13px;margin-bottom:5px">🛏 ${e(r.name)} <span style="font-size:11px;font-weight:400;color:var(--text2)">(cap. ${r.capacity})</span></div>`;
         if (occs.length===0) {
@@ -954,7 +975,11 @@ h += `</div></td></tr>`;
 
     if (assignCtx.pId) {
       const p = people.find(x=>x.id===assignCtx.pId);
-      m += `<h3>Assignar habitació</h3><p class="modal-sub">${e(p.name)} · ${p.from} → ${p.to}</p>`;
+      m += `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px">
+        <h3 style="margin:0">Assignar habitació</h3>
+        <button class="btn danger" onclick="delPersonFromModal('${p.id}')" style="font-size:11px;padding:4px 10px;white-space:nowrap;flex-shrink:0">✕ Eliminar persona</button>
+      </div>
+      <p class="modal-sub">${e(p.name)} · ${p.from} → ${p.to}</p>`;
 
       const sortedForModal = [...rooms].sort((a,b)=>(a.floor||'').localeCompare(b.floor||'')||a.name.localeCompare(b.name));
       const floorsInModal  = [...new Set(sortedForModal.map(r=>r.floor||'?'))];
@@ -980,6 +1005,37 @@ h += `</div></td></tr>`;
           </div>`;
         });
       });
+    } else if (assignCtx.qa) {
+      const r = rooms.find(x=>x.id===assignCtx.rId);
+      const gOpts = groups.map(g=>`<option value="${g.id}">${e(g.name)}</option>`).join('');
+      m += `<div class="quick-add-modal">
+        <h3>Afegir persona</h3>
+        <p class="qa-sub">🛏 <b>${e(r?.name||'')}</b> &nbsp;·&nbsp; ${assignCtx.fromDate} → ${assignCtx.toDate}</p>
+        <div class="field" style="margin-bottom:10px"><label>Nom</label><input id="qpName" placeholder="Nom i cognoms" autofocus></div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="field"><label>Entrada</label><input id="qpFrom" type="date" value="${assignCtx.fromDate}"></div>
+          <div class="field"><label>Sortida</label><input id="qpTo" type="date" value="${assignCtx.toDate}"></div>
+        </div>
+        <div class="field" style="margin-bottom:10px">
+          <label>Grup</label>
+          <select id="qpGroup" onchange="qaGroupChange()" style="padding:7px 9px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;font-size:13px;width:100%">
+            <option value="">Sense grup</option>
+            ${gOpts}
+            <option value="__new__">+ Crear nou grup…</option>
+          </select>
+        </div>
+        <div id="qaNewGrp" style="display:none;background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:10px">
+          <div class="form-row">
+            <div class="field" style="flex:2"><label>Nom del grup</label><input id="qpNewGroupName" placeholder="Família, Amics…"></div>
+            <div class="field" style="flex:0;min-width:55px"><label>Color</label><input id="qpNewGroupColor" type="color" value="#3B82F6" style="padding:2px;height:36px;width:48px;border:1px solid var(--border2);border-radius:6px;cursor:pointer"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn primary" id="qaBtn" onclick="quickAddPerson()" style="flex:1;padding:10px">✓ Afegir i assignar</button>
+          <button class="btn" onclick="closeModal()" style="padding:10px">Cancel·lar</button>
+        </div>
+      </div>`;
+
     } else if (assignCtx.rId) {
       const r = rooms.find(x=>x.id===assignCtx.rId);
       m += `<h3>${e(r.name)}</h3><p class="modal-sub">Dia ${assignCtx.d} · Planta ${r.floor||'?'}</p>`;
@@ -996,7 +1052,11 @@ h += `</div></td></tr>`;
     }
 
     m += `<button class="btn" style="width:100%;margin-top:12px;border-radius:20px" onclick="closeModal()">Tancar</button></div></div>`;
-    root.innerHTML += m;
+    // Append modal to body so root listeners are not affected
+    const overlay = document.createElement('div');
+    overlay.id = 'modalOverlay';
+    overlay.innerHTML = m;
+    document.body.appendChild(overlay);
   }
 }
 
@@ -1198,6 +1258,183 @@ function renderComments(comments) {
     </div>`;
   }).join('');
 }
+
+// ── Quick-add person ─────────────────────────────────────────────────────────
+window.quickAddPerson = async () => {
+  const ctx = assignCtx;
+  if (!ctx || !ctx.qa) return;
+
+  // Read ALL values from DOM immediately, before any await
+  const name    = document.getElementById('qpName').value.trim();
+  const from    = document.getElementById('qpFrom').value;
+  const to      = document.getElementById('qpTo').value;
+  const rId     = ctx.rId; // freeze roomId now
+  const grpSel  = document.getElementById('qpGroup').value || null;
+  const newGrpName  = document.getElementById('qpNewGroupName')?.value.trim() || '';
+  const newGrpColor = document.getElementById('qpNewGroupColor')?.value || '#3B82F6';
+
+  if (!name) { alert('Cal un nom.'); return; }
+  if (!from || !to || from >= to) { alert('Les dates no son correctes.'); return; }
+
+  // Disable button immediately
+  const btn = document.getElementById('qaBtn');
+  if (btn) { btn.disabled=true; btn.textContent='Guardant…'; }
+
+  // Close modal and clear ctx NOW so onSnapshot render() doesn't interfere
+  assignCtx = null;
+  const ov = document.getElementById('modalOverlay');
+  if (ov) ov.remove();
+
+  // Create group if needed (this may trigger onSnapshot/render, modal is already gone)
+  let groupId = grpSel === '__new__' ? null : (grpSel || null);
+  if (grpSel === '__new__' && newGrpName) {
+    const ref = await addDoc(collection(db,'groups'), {name:newGrpName, color:newGrpColor, from, to});
+    groupId = ref.id;
+  }
+
+  // Capacity check
+  if (rId) {
+    const r = rooms.find(x=>x.id===rId);
+    if (r) {
+      const occs = people.filter(x=>x.roomId===rId && x.from<to && x.to>from);
+      if (occs.length >= r.capacity) {
+        alert(`⚠️ L'habitació "${r.name}" està plena en aquestes dates (${occs.length}/${r.capacity}).`);
+        return;
+      }
+    }
+  }
+  await addDoc(collection(db,'people'), {name, from, to, groupId, roomId: rId});
+};
+
+window.delPersonFromModal = async (pId) => {
+  const p = people.find(x=>x.id===pId);
+  if (!p) return;
+  if (!confirm(`Eliminar ${p.name}?`)) return;
+  assignCtx = null;
+  const ov = document.getElementById('modalOverlay');
+  if (ov) ov.remove();
+  await deleteDoc(doc(db,'people',pId));
+};
+
+window.qaGroupChange = () => {
+  const v = document.getElementById('qpGroup')?.value;
+  const div = document.getElementById('qaNewGrp');
+  if (div) div.style.display = v==='__new__' ? 'block' : 'none';
+};
+
+// ── Resize state ──
+let rs = null;
+
+function addOneDay(d) {
+  const x = new Date(d+'T12:00:00');
+  x.setDate(x.getDate()+1);
+  return x.toISOString().slice(0,10);
+}
+
+// ── Calendar event delegation (drag-select + click + resize) ──────────────────
+const calRoot = document.getElementById('root');
+
+calRoot.addEventListener('mousedown', ev => {
+  // ── Resize handle ──
+  const handle = ev.target.closest('.resize-handle');
+  if (handle) {
+    ev.preventDefault(); ev.stopPropagation();
+    const pid = handle.dataset.pid, side = handle.dataset.resize;
+    const p = people.find(x=>x.id===pid);
+    if (!p) return;
+    const wrap0 = calRoot.querySelector(`.p-bar-wrap[data-pid="${pid}"]`);
+    const firstCell = calRoot.querySelector('[data-date][data-di="0"]');
+    const secCell   = calRoot.querySelector('[data-date][data-di="1"]');
+    const cw = (firstCell && secCell) ? (secCell.getBoundingClientRect().left - firstCell.getBoundingClientRect().left) : 41;
+    const cStart = firstCell ? firstCell.dataset.date : null;
+    rs = {pid, side, origFrom:p.from, origTo:p.to, cStart, cw};
+    document.body.style.cursor = 'ew-resize';
+    if (wrap0) wrap0.style.opacity = '0.6';
+    return;
+  }
+  // ── Day cell drag-select ──
+  const cell = ev.target.closest('[data-date][data-rid]');
+  if (!cell || cell.dataset.blocked==='1') return;
+  ev.preventDefault();
+  ds_sel = {roomId: cell.dataset.rid, startIdx: +cell.dataset.di, endIdx: +cell.dataset.di, active: true};
+  cell.classList.add('day-sel');
+});
+
+calRoot.addEventListener('mousemove', ev => {
+  // ── Resize in progress ──
+  if (rs) {
+    const els = document.elementsFromPoint(ev.clientX, ev.clientY);
+    const cell = els.find(el => el.dataset && el.dataset.date && el.dataset.rid);
+    if (!cell) return;
+    const d = cell.dataset.date;
+    if (rs.side==='right') { const t=addOneDay(d); if(t>rs.origFrom)rs.pendingTo=t; }
+    else { if(d<rs.origTo)rs.pendingFrom=d; }
+    // Live preview
+    const wrap = calRoot.querySelector(`.p-bar-wrap[data-pid="${rs.pid}"]`);
+    if (wrap && rs.cStart) {
+      wrap.style.opacity = '0.6';
+      const sDate = rs.pendingFrom || rs.origFrom;
+      const eDate = rs.pendingTo   || rs.origTo;
+      const diffD = (a,b) => Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);
+      const newL = diffD(rs.cStart, sDate) * rs.cw;
+      const newW = Math.max(diffD(sDate, eDate), 0.5) * rs.cw;
+      wrap.style.left  = newL + 'px';
+      wrap.style.width = newW + 'px';
+    }
+    return;
+  }
+  // ── Drag-select in progress ──
+  if (!ds_sel?.active) return;
+  const cell = ev.target.closest('[data-date][data-rid]');
+  if (!cell || cell.dataset.rid !== ds_sel.roomId) return;
+  ds_sel.endIdx = +cell.dataset.di;
+  const lo = Math.min(ds_sel.startIdx, ds_sel.endIdx);
+  const hi = Math.max(ds_sel.startIdx, ds_sel.endIdx);
+  document.querySelectorAll(`[data-rid="${ds_sel.roomId}"][data-di]`).forEach(c => {
+    const i = +c.dataset.di;
+    c.classList.toggle('day-sel', i>=lo && i<=hi);
+  });
+});
+
+document.addEventListener('mouseup', async ev => {
+  // ── Resize end ──
+  if (rs) {
+    document.body.style.cursor = '';
+    const {pid, side, origFrom, origTo, pendingFrom, pendingTo} = rs;
+    rs = null;
+    const wrap = document.querySelector(`.p-bar-wrap[data-pid="${pid}"]`);
+    if (wrap) { wrap.style.opacity = ''; wrap.style.left = ''; wrap.style.width = ''; }
+    const newFrom = (side==='left'  && pendingFrom) ? pendingFrom : origFrom;
+    const newTo   = (side==='right' && pendingTo)   ? pendingTo   : origTo;
+    if ((newFrom !== origFrom || newTo !== origTo) && newFrom < newTo) {
+      await updateDoc(doc(db,'people',pid), {from:newFrom, to:newTo});
+    }
+    return;
+  }
+  // ── Drag-select end ──
+  if (!ds_sel?.active) return;
+  ds_sel.active = false;
+  const lo = Math.min(ds_sel.startIdx, ds_sel.endIdx);
+  const hi = Math.max(ds_sel.startIdx, ds_sel.endIdx);
+  document.querySelectorAll('[data-date][data-di]').forEach(c=>c.classList.remove('day-sel'));
+  const roomCells = [...document.querySelectorAll('[data-rid="'+ds_sel.roomId+'"][data-di]')];
+  const from = roomCells.find(c=>+c.dataset.di===lo)?.dataset.date;
+  const toCell = roomCells.find(c=>+c.dataset.di===hi);
+  if (from && toCell) {
+    const toD = new Date(toCell.dataset.date+'T12:00:00');
+    toD.setDate(toD.getDate()+1);
+    const to = toD.toISOString().slice(0,10);
+    if (lo === hi) {
+      const d = from;
+      const hasOcc = people.some(p=>p.roomId===ds_sel.roomId&&p.from<=d&&p.to>d);
+      assignCtx = hasOcc ? {rId:ds_sel.roomId, d} : {qa:true, rId:ds_sel.roomId, fromDate:from, toDate:to};
+    } else {
+      assignCtx = {qa:true, rId:ds_sel.roomId, fromDate:from, toDate:to};
+    }
+    render();
+  }
+  ds_sel = null;
+});
 
 document.getElementById('commentFab').addEventListener('click', toggleComments);
 document.getElementById('commentClose').addEventListener('click', toggleComments);
